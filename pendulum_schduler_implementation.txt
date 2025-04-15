@@ -1,0 +1,63 @@
+from torch.optim.lr_scheduler import _LRScheduler
+import torch
+
+class AdaptiveBatchLR(_LRScheduler):
+    def __init__(self, optimizer, window=10, step_up=1.1, step_down=0.9, 
+                 base_lr=1e-5, max_lr=1e-2, last_epoch=-1):
+        """
+        Args:
+            window:    Batches between loss checks (x=10).
+            step_up:  Multiplier when increasing LR (e.g., 1.1).
+            step_down: Multiplier when decreasing LR (e.g., 0.9).
+            base_lr:   Minimum allowed LR.
+            max_lr:    Maximum allowed LR.
+        """
+        self.window = window
+        self.step_up = step_up
+        self.step_down = step_down
+        self.base_lr = base_lr
+        self.max_lr = max_lr
+        self.loss_history = []
+        self.direction = 1  # 1=increasing, -1=decreasing
+        super().__init__(optimizer, last_epoch)
+
+    def step(self, current_loss=None):
+        if current_loss is None:
+            raise ValueError("Loss must be provided each batch.")
+        
+        self.loss_history.append(current_loss)
+        if len(self.loss_history) > self.window:
+            # Compare current loss to loss 'window' batches ago
+            if current_loss > self.loss_history[-self.window - 1]:
+                self.direction *= -1  # Reverse direction
+        
+        # Update LR for each param group
+        for group in self.param_groups:
+            current_lr = group['lr']
+            if self.direction == 1:
+                new_lr = min(current_lr * self.step_up, self.max_lr)  # Clipped ↑
+            else:
+                new_lr = max(current_lr * self.step_down, self.base_lr)  # Clipped ↓
+            group['lr'] = new_lr
+
+        self.last_epoch += 1
+Usage Example:
+python
+
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, , momentum=0.9)
+scheduler = AdaptiveBatchLR(
+    optimizer, 
+    window=10,         # Check loss every 10 batches
+    step_up=1.1,       # Increase LR by 10% if direction=1
+    step_down=0.9,     # Decrease LR by 10% if direction=-1
+    base_lr=1e-5,      # Minimum LR
+    max_lr=1e-2        # Maximum LR
+)
+
+for batch_idx, (data, target) in enumerate(train_loader):
+    optimizer.zero_grad()
+    output = model(data)
+    loss = criterion(output, target)
+    loss.backward()
+    optimizer.step()
+    scheduler.step(loss.item())  # Update LR every batch!
