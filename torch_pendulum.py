@@ -103,10 +103,10 @@ reacting naturally to training signals (loss trends) in a controlled way. You've
 
 
 
-🔧 Pendulum Scheduler: AdaptiveBatchLR
+🔧 torch_pendulum: AdaptiveBatchLR
 (By Nouri Selloum – Algeria 🇩🇿)
 Dynamic LR & Momentum scheduler for PyTorch
-Public name: pendulum_scheduler
+Public name: torch_pendulum
 
 🚀 Overview
 The AdaptiveBatchLR (torch_pendulum) is a custom PyTorch _LRScheduler that:
